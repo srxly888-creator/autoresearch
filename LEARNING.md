@@ -1,3 +1,5 @@
+**简体中文** | **[English](./LEARNING-EN.md)**
+
 # Auto-Research 学习笔记
 
 > **学习时间**: 2026-03-22 15:00

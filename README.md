@@ -1,3 +1,5 @@
+**English** | **[繁體中文](./README-ZH-TW.md)** | **[简体中文](./README-ZH-CN.md)**
+
 # autoresearch
 
 ![teaser](progress.png)
