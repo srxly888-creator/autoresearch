@@ -1,4 +1,4 @@
-**English** | **[繁體中文](./README-ZH-TW.md)** | **[简体中文](./README-ZH-CN.md)**
+**English** | **[繁體中文](./README-ZH-TW.md)** | **[简体中文](./README-ZH-CN.md)** | **[📚 Learning Notes](./.learning/README.md)**
 
 # autoresearch
 
