@@ -8,19 +8,56 @@
 
 核心理念：给 AI agent 一个小型但真实的 LLM 训练环境，让它整夜自主实验。它修改代码，训练 5 分钟，检查结果是否改进，保留或丢弃，然后重复。你早上醒来时会看到实验日志，以及（希望）一个更好的模型。这里的训练代码是 [nanochat](https://github.com/karpathy/nanochat) 的简化单 GPU 实现。核心思想是你不再像往常作为研究人员那样触碰任何 Python 文件。相反，你编写 `program.md` Markdown 文件，为 AI agents 提供上下文并设置你的自主研究组织。这个仓库中的默认 `program.md` 故意保持为最低限度的基线，尽管显而易见人们会如何随着时间的推移迭代它，以找到实现最快研究进展的"研究组织代码"，如何向组合中添加更多 agents 等。关于这个项目的更多背景在这个 [推文](https://x.com/karpathy/status/2029701092347630069) 和 [这条推文](https://x.com/karpathy/status/2031135152349524125) 中。
 
-## 工作原理
+## 这个 fork 新增了什么
+
+这个 fork 现在保留了原始的单 GPU 训练玩法，同时新增了一个更通用的"自动研究 / 自动解题"最小架构。也就是说，仓库不再只能做 `train.py` 的训练调参实验，而是可以改造成：
+
+- 自动找 bug 修复路径
+- 自动优化某段代码的性能
+- 自动搜索某个 benchmark 的更优实现
+- 自动尝试不同策略并用统一评估器打分
+
+新增的通用模式入口如下：
+
+- **`program.md`** — 通用自动研究 agent 指令
+- **`problem.md`** — 当前任务定义、约束和成功标准
+- **`task.json`** — 可修改文件、评估命令、分数方向、超时和产物目录
+- **`run_task.py`** — 通用评估入口，负责跑 evaluator、记日志、生成 artifacts
+- **`tasks/example_twin_prime_solver/`** — 一个可直接运行的本地 benchmark 示例
+
+原始训练模式仍然保留在：
+
+- **`program-train.md`**
+- **`train.py`**
+- **`prepare.py`**
+
+## 通用模式快速开始
+
+如果你想让 agent 自动探索"解决问题的路径、方向或实现代码"，而不是训练模型，可以直接：
+
+```bash
+# 1. 先跑一次基线
+python3 run_task.py --description baseline
+
+# 2. 启动 agent，让它读取通用任务定义
+# 入口文件是 program.md
+```
+
+默认示例任务是优化一个 `count_twin_primes(limit)` 函数，分数越高代表运行越快，且必须先通过正确性检查。你之后只需要替换 `problem.md`、`task.json` 和 evaluator，就能把这套循环迁移到你自己的项目。
+
+## 原始训练模式如何工作
 
 这个仓库故意保持得很小，实际上只有三个重要的文件：
 
 - **`prepare.py`** — 固定常量、一次性数据准备（下载训练数据、训练 BPE tokenizer）和运行时工具（dataloader、评估）。不修改。
 - **`train.py`** — agent 编辑的唯一文件。包含完整的 GPT 模型、优化器（Muon + AdamW）和训练循环。一切都可以修改：架构、超参数、优化器、批次大小等。**这个文件由 agent 编辑和迭代**。
-- **`program.md`** — 一个 agent 的基线指令。将你的 agent 指向这里，让它开始。**这个文件由人类编辑和迭代**。
+- **`program-train.md`** — 训练模式下的 agent 基线指令。将你的 agent 指向这里，让它开始。**这个文件由人类编辑和迭代**。
 
 按照设计，训练运行 **固定的 5 分钟时间预算**（挂钟时间，不包括启动/编译），无论你的计算细节如何。指标是 **val_bpb**（验证 bits per byte）— 越低越好，并且与词表大小无关，因此架构变化可以公平比较。
 
 如果你是神经网络新手，这个 ["Dummy's Guide"](https://x.com/hooeem/status/2030720614752039185) 看起来很不错，可以了解更多背景。
 
-## 快速开始
+## 训练模式快速开始
 
 **要求：** 单个 NVIDIA GPU（在 H100 上测试）、Python 3.10+、[uv](https://docs.astral.sh/uv/)。
 
@@ -41,22 +78,27 @@ uv run train.py
 
 如果上述命令都能正常工作，你的设置就可以运行了，你可以进入自主研究模式。
 
-## 运行 agent
+## 运行训练 agent
 
 只需在这个仓库中启动你的 Claude/Codex 或任何你想用的工具（并禁用所有权限），然后你可以这样提示：
 
 ```
-Hi have a look at program.md and let's kick off a new experiment! let's do the setup first.
+Hi have a look at program-train.md and let's kick off a new experiment! let's do the setup first.
 ```
 
-`program.md` 文件本质上是一个超轻量级的 "skill"。
+训练模式下，`program-train.md` 文件本质上是一个超轻量级的 "skill"。通用模式则使用新的 `program.md`。
 
-## 项目结构
+## 当前项目结构
 
 ```
 prepare.py      — 常量、数据准备 + 运行时工具（不要修改）
 train.py        — 模型、优化器、训练循环（agent 修改这个）
-program.md      — agent 指令
+program.md      — 通用自动研究 agent 指令
+program-train.md — 原始训练模式 agent 指令
+problem.md      — 当前通用任务定义
+task.json       — 当前通用任务配置
+run_task.py     — 通用评估入口
+tasks/          — 通用任务目录（含示例 benchmark）
 pyproject.toml  — 依赖
 ```
 

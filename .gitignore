@@ -5,12 +5,14 @@ build/
 dist/
 wheels/
 *.egg-info
+._*
 
 # Virtual environments
 .venv
 worktrees/
 results/
 queue/
+artifacts/
 
 # Agent prompt files (generated per-session by launchers)
 CLAUDE.md

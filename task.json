@@ -1,0 +1,16 @@
+{
+  "name": "example_twin_prime_solver",
+  "description": "Optimize a correct twin-prime counter on a fixed benchmark.",
+  "mutable_paths": [
+    "tasks/example_twin_prime_solver/workspace/solver.py"
+  ],
+  "evaluate": {
+    "command": [
+      "__PYTHON__",
+      "tasks/example_twin_prime_solver/evaluate.py"
+    ],
+    "timeout_seconds": 30,
+    "score_direction": "maximize"
+  },
+  "artifacts_dir": "artifacts/example_twin_prime_solver"
+}
