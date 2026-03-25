@@ -142,7 +142,7 @@ python3 run_task.py --description baseline
 在仓库里启动你的 Codex/Claude 后，直接给它：
 
 ```text
-Read program.md, run baseline with python3 run_task.py, then start the experiment loop and keep only score-improving changes.
+阅读 program.md，先执行 python3 run_task.py --description baseline，然后开始实验循环，只保留分数提升的改动。
 ```
 
 默认策略：
@@ -169,7 +169,7 @@ Read program.md, run baseline with python3 run_task.py, then start the experimen
 {
   "score": 87.5,
   "status": "pass",
-  "summary": "all tests passed; p95 latency improved"
+  "summary": "测试全部通过；p95 延迟得到优化"
 }
 ```
 

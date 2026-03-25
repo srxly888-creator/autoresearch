@@ -1,60 +1,60 @@
 # autoresearch
 
-This fork keeps the original GPU training workflow in `program-train.md`, but the default mode is now API-first automatic research / problem-solving.
+这个 fork 保留了原始 GPU 训练工作流（`program-train.md`），但默认模式已经切换为面向 API 用户的自动研究 / 自动解题流程。
 
-## Setup
+## 初始化
 
-To set up a new run, work with the user to:
+启动新一轮实验时，请和用户完成以下步骤：
 
-1. **Agree on a run tag**: propose a tag based on today's date (e.g. `mar25`). The branch `autoresearch/<tag>` must not already exist.
-2. **Create the branch**: `git checkout -b autoresearch/<tag>` from current master.
-3. **Read the active task definition**:
-   - `README.md` — repository context.
-   - `problem.md` — the current task, constraints, and success criteria.
-   - `task.json` — mutable paths, evaluation command, score direction, timeout, artifact location.
-   - `run_task.py` — the generic evaluation harness.
-4. **Read the task-specific files**:
-   - Files listed in `mutable_paths` are the only files you may edit by default.
-   - Read the evaluator entrypoint from `task.json` so you understand how scoring works.
-5. **Confirm the baseline**: Run `python3 run_task.py --description baseline` before making changes.
-6. **Confirm and go**: Record baseline results, then begin the experiment loop.
+1. **确定 run tag**：按日期生成标签（如 `mar25`），并确保 `autoresearch/<tag>` 分支尚不存在。
+2. **创建分支**：从当前 `master` 执行 `git checkout -b autoresearch/<tag>`。
+3. **阅读当前任务定义**：
+   - `README.md`：仓库背景与使用方式
+   - `problem.md`：当前任务目标、约束、成功标准
+   - `task.json`：可修改文件范围、评估命令、打分方向、超时与产物目录
+   - `run_task.py`：通用评估执行器
+4. **阅读任务相关文件**：
+   - `mutable_paths` 中列出的文件是默认可修改范围
+   - 先看清 `task.json` 中 evaluator 入口，明确评分规则
+5. **确认 baseline**：改代码前先执行 `python3 run_task.py --description baseline`。
+6. **确认后开始循环**：先记录 baseline，再进入实验迭代。
 
-## Experimentation
+## 实验循环
 
-Each experiment follows a generic cycle:
+每轮实验都按统一节奏执行：
 
-1. Propose one concrete hypothesis.
-2. Modify only the files listed in `mutable_paths`, unless the human explicitly broadens scope.
-3. Commit the change.
-4. Run `python3 run_task.py --description "<short hypothesis>"`.
-5. Read the printed summary and the logs under `artifacts/.../runs/<run_id>/`.
-6. If the task score improved in the configured direction, keep the commit.
-7. If it regressed or failed, revert to the previous good commit.
-8. Record lessons learned in an untracked note under the artifact directory if helpful.
+1. 提出一个具体假设。
+2. 仅修改 `mutable_paths` 里的文件（除非用户明确扩展范围）。
+3. 提交改动。
+4. 执行 `python3 run_task.py --description "<简短实验说明>"`。
+5. 阅读终端摘要和 `artifacts/.../runs/<run_id>/` 下日志。
+6. 分数按配置方向提升则保留 commit。
+7. 退化或失败则回退到上一个有效版本。
+8. 必要时把经验记录到 artifact 目录下的未跟踪笔记。
 
-The task may be about code generation, bug fixing, benchmark optimization, search strategy design, or any other problem that has:
+任务类型可以是代码生成、修 bug、性能优化、策略搜索等，但应满足：
 
-- a clear success metric
-- a reproducible evaluator
-- a small, explicit mutable surface area
+- 成功指标清晰
+- 评估可复现
+- 可修改范围明确且尽量小
 
-## Rules
+## 规则
 
-**What you CAN do:**
-- Edit the files listed in `mutable_paths`.
-- Read any read-only task context needed to understand the benchmark.
-- Use the evaluator output, logs, and git history to steer the next hypothesis.
+**可以做的事：**
+- 修改 `mutable_paths` 指定文件
+- 阅读必要的只读上下文以理解任务
+- 基于 evaluator 输出、日志与 git 历史推进下一轮假设
 
-**What you CANNOT do by default:**
-- Edit the evaluator or `run_task.py`.
-- Add dependencies.
-- Change the scoring contract in `task.json`.
+**默认不能做的事：**
+- 修改 evaluator 或 `run_task.py`
+- 新增依赖
+- 更改 `task.json` 中评分契约
 
-If the human explicitly asks to expand the search space, you may revise those constraints together.
+若用户明确要求扩大搜索空间，可与用户同步后再放宽限制。
 
-## Output format
+## 输出格式
 
-`python3 run_task.py` prints a summary like this:
+`python3 run_task.py` 会输出类似摘要：
 
 ```
 ---
@@ -66,45 +66,45 @@ status:           fail
 duration_seconds: 0.218
 best_score_before:82.100000
 comparison:       improved
-summary:          8/10 tests passed; fix correctness first
+summary:          10 项测试通过 8 项；请先修复正确性
 artifact_dir:     artifacts/api_bugfix_assistant/runs/20260325-120000-abc123
 ```
 
-The evaluator must write a JSON result payload to the path given in `AUTORESEARCH_OUTPUT_JSON`. The minimum payload is:
+evaluator 必须把 JSON 结果写入 `AUTORESEARCH_OUTPUT_JSON` 指向路径。最小结果结构如下：
 
 ```json
 {
   "score": 83.21,
   "status": "fail",
-  "summary": "8/10 tests passed; fix correctness first"
+  "summary": "10 项测试通过 8 项；请先修复正确性"
 }
 ```
 
-## Logging
+## 日志记录
 
-`run_task.py` automatically appends a row to `artifacts/<task>/results.tsv` with:
+`run_task.py` 会自动向 `artifacts/<task>/results.tsv` 追加一行：
 
 ```
 run_id	branch	commit	score	status	duration_seconds	description	summary
 ```
 
-The artifact directory also stores:
+artifact 目录还会保存：
 
 - `stdout.log`
 - `stderr.log`
 - `result.json`
 - `metadata.json`
 
-## The experiment loop
+## 持续迭代
 
-LOOP FOREVER:
+循环执行：
 
-1. Inspect the current branch and best known score.
-2. Read `problem.md` again before large directional changes.
-3. Make one focused change.
-4. Commit.
-5. Run the evaluator.
-6. Keep or discard based on the configured score direction.
-7. Repeat until the human stops you.
+1. 先看当前分支与历史最佳分数
+2. 大方向变化前重读 `problem.md`
+3. 做一次聚焦改动
+4. 提交
+5. 跑 evaluator
+6. 按评分方向决定保留或丢弃
+7. 重复直到用户停止
 
-Use `program-train.md` when the active task is the original single-GPU `train.py` optimization workflow instead of a generic benchmark-driven task.
+如果当前任务是原始单 GPU `train.py` 优化流程，请改用 `program-train.md`。
