@@ -64,6 +64,42 @@ resp = client.chat.completions.create(
 print(resp.choices[0].message.content)
 ```
 
+### 4) GLM-5 Anthropic 兼容快速配置（可选）
+
+如果你使用 Anthropic 兼容通道，建议这样配置：
+
+```bash
+export ANTHROPIC_BASE_URL="https://open.bigmodel.cn/api/anthropic"
+export ANTHROPIC_AUTH_TOKEN="你的智谱 Token"
+export ANTHROPIC_API_KEY="$ANTHROPIC_AUTH_TOKEN"
+export ANTHROPIC_MODEL="glm-5"
+```
+
+最小验证（Anthropic SDK）：
+
+```python
+from anthropic import Anthropic
+import os
+
+client = Anthropic(
+    api_key=os.getenv("ANTHROPIC_AUTH_TOKEN"),
+    base_url=os.getenv("ANTHROPIC_BASE_URL"),
+)
+
+resp = client.messages.create(
+    model=os.getenv("ANTHROPIC_MODEL", "glm-5"),
+    max_tokens=16,
+    messages=[{"role": "user", "content": "只回复 OK"}],
+)
+print(resp.content[0].text)
+```
+
+说明：
+
+- `ZAI_API_KEY` 示例是 OpenAI 兼容写法。
+- `ANTHROPIC_AUTH_TOKEN` 示例是 Anthropic 兼容写法。
+- 两种方式选一种即可，不需要同时使用。
+
 如果你在某些编程工具中使用 GLM Coding Plan，可改用 coding 端点：
 
 - `https://open.bigmodel.cn/api/coding/paas/v4/`
