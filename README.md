@@ -31,7 +31,14 @@
 ## 30 秒快速开始
 
 ```bash
-cd /Volumes/PS1008/Github/autoresearch
+git clone git@github.com:srxly888-creator/autoresearch.git
+cd autoresearch
+python3 run_task.py --description baseline
+```
+
+如果你已经在仓库目录里，直接执行：
+
+```bash
 python3 run_task.py --description baseline
 ```
 
