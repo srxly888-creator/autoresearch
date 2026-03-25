@@ -28,7 +28,53 @@
 
 这 4 个部件组合后，就能在任何“可评估”的工程问题上复用。
 
-## 30 秒快速开始
+## 快速开始前提（本地接通 GLM-5 API）
+
+先把本机 API 调用打通，再进自动研究流程。
+
+### 1) 准备环境
+
+```bash
+python3 --version
+python3 -m pip install -U openai
+```
+
+### 2) 配置密钥
+
+```bash
+export ZAI_API_KEY="你的智谱 API Key"
+```
+
+### 3) 最小联通验证（GLM-5）
+
+```python
+from openai import OpenAI
+import os
+
+client = OpenAI(
+    api_key=os.getenv("ZAI_API_KEY"),
+    base_url="https://open.bigmodel.cn/api/paas/v4/"
+)
+
+resp = client.chat.completions.create(
+    model="glm-5",
+    messages=[{"role": "user", "content": "只回复 OK"}],
+    temperature=0
+)
+print(resp.choices[0].message.content)
+```
+
+如果你在某些编程工具中使用 GLM Coding Plan，可改用 coding 端点：
+
+- `https://open.bigmodel.cn/api/coding/paas/v4/`
+
+官方教材/文档入口：
+
+- OpenAI 兼容接入：[docs.bigmodel.cn/cn/guide/develop/openai/introduction](https://docs.bigmodel.cn/cn/guide/develop/openai/introduction)
+- API 使用概述：[docs.bigmodel.cn/cn/api/introduction](https://docs.bigmodel.cn/cn/api/introduction)
+- 模型迁移指南：[docs.bigmodel.cn/cn/guide/platform/model-migration](https://docs.bigmodel.cn/cn/guide/platform/model-migration)
+
+## 30 秒快速开始（通过前提后）
 
 ```bash
 git clone git@github.com:srxly888-creator/autoresearch.git
