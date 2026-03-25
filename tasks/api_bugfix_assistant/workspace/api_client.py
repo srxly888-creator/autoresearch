@@ -5,10 +5,10 @@ def build_chat_request(model: str, messages: list[dict], temperature: float = 0.
     """Build request payload for OpenAI-compatible chat completions APIs."""
     return {
         "model": model,
-        "messages": messages[0],  # BUG: should keep the full list
-        "temperature": int(temperature),  # BUG: should stay float
-        "max_tokens": str(max_tokens),  # BUG: should stay int
-        "stream": "false",  # BUG: should be bool
+        "messages": messages,
+        "temperature": float(temperature),
+        "max_tokens": int(max_tokens),
+        "stream": False,
     }
 
 
@@ -16,8 +16,8 @@ def extract_text_from_response(response_json: dict) -> str:
     """
     Extract assistant text from OpenAI-compatible response payload.
     """
-    if "content" in response_json:
-        return str(response_json["content"])  # BUG: wrong source path for chat responses
+    if "output_text" in response_json:
+        return str(response_json["output_text"])
 
     choices = response_json.get("choices", [])
     if not choices:
@@ -26,8 +26,11 @@ def extract_text_from_response(response_json: dict) -> str:
     message = choices[0].get("message", {})
     content = message.get("content", "")
     if isinstance(content, list):
-        # BUG: should combine only text parts
-        return str(content)
+        text_parts = []
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "text":
+                text_parts.append(str(part.get("text", "")))
+        return "\n".join(part for part in text_parts if part)
     return str(content)
 
 
@@ -35,10 +38,10 @@ def should_retry(status_code: int, error_code: str | None, attempt: int, max_att
     """
     Return True when the request should be retried.
     """
-    if attempt > max_attempts:
-        return True  # BUG: should stop retrying after max attempts
-    if status_code == 400:
-        return True  # BUG: client errors usually should not retry
+    if attempt >= max_attempts:
+        return False
     if error_code == "context_length_exceeded":
-        return True  # BUG: deterministic request error, should not retry
+        return False
+    if status_code in {429, 500, 502, 503, 504}:
+        return True
     return False
