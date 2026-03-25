@@ -1,50 +1,61 @@
 # Active Problem
 
-The default task in this fork is a small, fully local benchmark that demonstrates the generic autoresearch loop.
+The default task is now API-focused and designed for users who build products on top of hosted LLM APIs.
 
 ## Goal
 
-Improve the implementation of `count_twin_primes(limit)` in `tasks/example_twin_prime_solver/workspace/solver.py`.
+Fix and harden an OpenAI-compatible API helper in:
 
-The function must return the exact number of twin-prime pairs `(p, p + 2)` such that both primes are less than or equal to `limit`.
+- `tasks/api_bugfix_assistant/workspace/api_client.py`
+
+The helper should:
+
+1. Build correct chat request payloads.
+2. Extract assistant text robustly from common response shapes.
+3. Retry only retryable failures.
 
 ## Success Metric
 
 - Primary metric: maximize `score`
-- Current scorer: `score = 1.0 / benchmark_runtime_seconds`
-- Correctness is a hard gate. Wrong answers get a failing status and a non-improving score.
+- Correctness gate: all evaluator tests must pass to reach `status=pass`.
+- Speed bonus: after correctness is 100%, faster text extraction gets a higher score.
 
-The benchmark is intentionally simple:
-
-1. The evaluator runs correctness checks on several limits.
-2. If correctness passes, it times the solver on a larger fixed input.
-3. Faster correct code gets a better score.
+The evaluator runs deterministic local checks and does not make network calls.
 
 ## Mutable Surface Area
 
 You may edit only:
 
-- `tasks/example_twin_prime_solver/workspace/solver.py`
+- `tasks/api_bugfix_assistant/workspace/api_client.py`
 
 Treat these as read-only:
 
 - `task.json`
 - `run_task.py`
-- `tasks/example_twin_prime_solver/evaluate.py`
+- `tasks/api_bugfix_assistant/evaluate.py`
 - `problem.md`
 
 ## Constraints
 
-- Keep the public function signature: `count_twin_primes(limit: int) -> int`
-- Use only the Python standard library
-- Do not special-case known benchmark answers
-- Prefer simple, readable improvements over clever but fragile tricks
+- Keep the existing function names:
+  - `build_chat_request(...)`
+  - `extract_text_from_response(...)`
+  - `should_retry(...)`
+- Use only Python standard library.
+- Keep behavior predictable and easy to understand.
+- Do not hardcode evaluator answers.
 
 ## Why This Task Exists
 
-This task is only a working example of the generic architecture. To retarget the repo at a real project:
+This default task models a common real scenario:
+
+- API-only teams need reliable request/response handling.
+- Bugs are usually in payload format, parser edge cases, and retry policy.
+- Those bugs are perfect for autonomous fix loops with local, deterministic tests.
+
+To retarget for your project:
 
 1. Rewrite `problem.md`
 2. Update `task.json`
-3. Point `mutable_paths` at the files the agent may edit
-4. Replace the evaluator command with your own reproducible benchmark
+3. Point `mutable_paths` to your editable files
+4. Replace evaluator command with your own test/benchmark harness

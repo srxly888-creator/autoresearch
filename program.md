@@ -1,6 +1,6 @@
 # autoresearch
 
-This fork keeps the original GPU training workflow in `program-train.md`, but the default mode is now a generic automatic research / problem-solving loop.
+This fork keeps the original GPU training workflow in `program-train.md`, but the default mode is now API-first automatic research / problem-solving.
 
 ## Setup
 
@@ -17,7 +17,7 @@ To set up a new run, work with the user to:
    - Files listed in `mutable_paths` are the only files you may edit by default.
    - Read the evaluator entrypoint from `task.json` so you understand how scoring works.
 5. **Confirm the baseline**: Run `python3 run_task.py --description baseline` before making changes.
-6. **Confirm and go**: Once the baseline works, begin the experiment loop.
+6. **Confirm and go**: Record baseline results, then begin the experiment loop.
 
 ## Experimentation
 
@@ -58,25 +58,25 @@ If the human explicitly asks to expand the search space, you may revise those co
 
 ```
 ---
-task:             example_twin_prime_solver
+task:             api_bugfix_assistant
 run_id:           20260325-120000-abc123
-score:            0.812345
+score:            83.210000
 score_direction:  maximize
-status:           pass
-duration_seconds: 1.231
-best_score_before:0.790000
+status:           fail
+duration_seconds: 0.218
+best_score_before:82.100000
 comparison:       improved
-summary:          all tests passed; benchmark runtime 1.231s
-artifact_dir:     artifacts/example_twin_prime_solver/runs/20260325-120000-abc123
+summary:          8/10 tests passed; fix correctness first
+artifact_dir:     artifacts/api_bugfix_assistant/runs/20260325-120000-abc123
 ```
 
 The evaluator must write a JSON result payload to the path given in `AUTORESEARCH_OUTPUT_JSON`. The minimum payload is:
 
 ```json
 {
-  "score": 0.812345,
-  "status": "pass",
-  "summary": "all tests passed; benchmark runtime 1.231s"
+  "score": 83.21,
+  "status": "fail",
+  "summary": "8/10 tests passed; fix correctness first"
 }
 ```
 

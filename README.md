@@ -1,140 +1,128 @@
 **[English](./README-EN.md)** | **简体中文** | **[繁體中文](./README-ZH-TW.md)** | **[📚 Learning Notes](./.learning/README.md)**
 
-# autoresearch
+# autoresearch (API-first fork)
 
-![teaser](progress.png)
+这个 fork 的默认目标不是训练模型，而是帮 API 用户自动解决工程问题：
 
-*曾几何时，前沿 AI 研究是由碳基计算机在吃饭、睡觉、寻找其他乐趣的间隙完成的，偶尔通过声波互联在"组会"仪式中同步。那个时代早已过去。现在，研究完全是运行在云端计算集群巨型结构上的自主 AI 智能体群落的领域。这些智能体声称我们现在处于代码库的第 10,205 代，无论如何没人能判断这是对是错，因为"代码"现在是一个自我修改的二进制文件，已经超出了人类的理解范围。这个仓库是这一切如何开始的故事。-@karpathy，2026年3月*。
+- 自动修 bug
+- 自动补接口实现
+- 自动跑测试并比较结果
+- 自动保留改进、丢弃退化方案
 
-核心理念：给 AI agent 一个小型但真实的 LLM 训练环境，让它整夜自主实验。它修改代码，训练 5 分钟，检查结果是否改进，保留或丢弃，然后重复。你早上醒来时会看到实验日志，以及（希望）一个更好的模型。这里的训练代码是 [nanochat](https://github.com/karpathy/nanochat) 的简化单 GPU 实现。核心思想是你不再像往常作为研究人员那样触碰任何 Python 文件。相反，你编写 `program.md` Markdown 文件，为 AI agents 提供上下文并设置你的自主研究组织。这个仓库中的默认 `program.md` 故意保持为最低限度的基线，尽管显而易见人们会如何随着时间的推移迭代它，以找到实现最快研究进展的"研究组织代码"，如何向组合中添加更多 agents 等。关于这个项目的更多背景在这个 [推文](https://x.com/karpathy/status/2029701092347630069) 和 [这条推文](https://x.com/karpathy/status/2031135152349524125) 中。
+你只需要有一个可执行评估器（tests/benchmark），agent 就能在约束范围内持续迭代。
 
-## 这个 fork 新增了什么
+## 适用人群
 
-这个 fork 现在保留了原始的单 GPU 训练玩法，同时新增了一个更通用的"自动研究 / 自动解题"最小架构。也就是说，仓库不再只能做 `train.py` 的训练调参实验，而是可以改造成：
+- 主要使用 OpenAI/GLM/Claude/DeepSeek 等 API 的团队
+- 没有本地 GPU，或不想维护训练基础设施
+- 想把“提出方案 -> 改代码 -> 跑验证 -> 记录结果”做成自动循环
 
-- 自动找 bug 修复路径
-- 自动优化某段代码的性能
-- 自动搜索某个 benchmark 的更优实现
-- 自动尝试不同策略并用统一评估器打分
+## 核心思路
 
-新增的通用模式入口如下：
+本仓库把自动研究拆成 4 个固定部件：
 
-- **`program.md`** — 通用自动研究 agent 指令
-- **`problem.md`** — 当前任务定义、约束和成功标准
-- **`task.json`** — 可修改文件、评估命令、分数方向、超时和产物目录
-- **`run_task.py`** — 通用评估入口，负责跑 evaluator、记日志、生成 artifacts
-- **`tasks/example_twin_prime_solver/`** — 一个可直接运行的本地 benchmark 示例
+1. `problem.md`：问题定义（目标、约束、验收标准）
+2. `task.json`：任务配置（可改文件、评估命令、打分方向、超时）
+3. `run_task.py`：统一运行入口（执行评估、记录 artifacts、打印摘要）
+4. `tasks/<task_name>/evaluate.py`：你的评估器（输出 score/status/summary）
 
-原始训练模式仍然保留在：
+这 4 个部件组合后，就能在任何“可评估”的工程问题上复用。
 
-- **`program-train.md`**
-- **`train.py`**
-- **`prepare.py`**
-
-## 通用模式快速开始
-
-如果你想让 agent 自动探索"解决问题的路径、方向或实现代码"，而不是训练模型，可以直接：
+## 30 秒快速开始
 
 ```bash
-# 1. 先跑一次基线
+cd /Volumes/PS1008/Github/autoresearch
 python3 run_task.py --description baseline
-
-# 2. 启动 agent，让它读取通用任务定义
-# 入口文件是 program.md
 ```
 
-默认示例任务是优化一个 `count_twin_primes(limit)` 函数，分数越高代表运行越快，且必须先通过正确性检查。你之后只需要替换 `problem.md`、`task.json` 和 evaluator，就能把这套循环迁移到你自己的项目。
+你会得到：
 
-## 原始训练模式如何工作
+- `artifacts/api_bugfix_assistant/results.tsv`（历史结果）
+- `artifacts/api_bugfix_assistant/runs/<run_id>/`（每次运行日志和结构化结果）
 
-这个仓库故意保持得很小，实际上只有三个重要的文件：
+当前默认任务是：
 
-- **`prepare.py`** — 固定常量、一次性数据准备（下载训练数据、训练 BPE tokenizer）和运行时工具（dataloader、评估）。不修改。
-- **`train.py`** — agent 编辑的唯一文件。包含完整的 GPT 模型、优化器（Muon + AdamW）和训练循环。一切都可以修改：架构、超参数、优化器、批次大小等。**这个文件由 agent 编辑和迭代**。
-- **`program-train.md`** — 训练模式下的 agent 基线指令。将你的 agent 指向这里，让它开始。**这个文件由人类编辑和迭代**。
+- `tasks/api_bugfix_assistant/workspace/api_client.py`
 
-按照设计，训练运行 **固定的 5 分钟时间预算**（挂钟时间，不包括启动/编译），无论你的计算细节如何。指标是 **val_bpb**（验证 bits per byte）— 越低越好，并且与词表大小无关，因此架构变化可以公平比较。
+这个任务模拟真实 API 工程需求：修复 OpenAI-compatible 请求构造、响应解析和重试策略。
 
-如果你是神经网络新手，这个 ["Dummy's Guide"](https://x.com/hooeem/status/2030720614752039185) 看起来很不错，可以了解更多背景。
+## 如何让 agent 自动迭代
 
-## 训练模式快速开始
+在仓库里启动你的 Codex/Claude 后，直接给它：
 
-**要求：** 单个 NVIDIA GPU（在 H100 上测试）、Python 3.10+、[uv](https://docs.astral.sh/uv/)。
-
-```bash
-
-# 1. 安装 uv 项目管理器（如果你还没有）
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 2. 安装依赖
-uv sync
-
-# 3. 下载数据并训练 tokenizer（一次性，~2 分钟）
-uv run prepare.py
-
-# 4. 手动运行单个训练实验（~5 分钟）
-uv run train.py
+```text
+Read program.md, run baseline with python3 run_task.py, then start the experiment loop and keep only score-improving changes.
 ```
 
-如果上述命令都能正常工作，你的设置就可以运行了，你可以进入自主研究模式。
+默认策略：
 
-## 运行训练 agent
+- 只允许修改 `mutable_paths` 指定文件
+- 每次改动后都跑评估器
+- 分数提升才保留，否则回退
 
-只需在这个仓库中启动你的 Claude/Codex 或任何你想用的工具（并禁用所有权限），然后你可以这样提示：
+## 如何替换成你的真实任务
 
+只改下面三处即可：
+
+1. `problem.md`
+2. `task.json`
+3. `tasks/<your_task>/evaluate.py`
+
+建议流程：
+
+1. 在 `problem.md` 写清楚业务目标和硬约束
+2. 在 `task.json` 指定可修改代码范围和评估命令
+3. 在 `evaluate.py` 做确定性验证并写出结果 JSON：
+
+```json
+{
+  "score": 87.5,
+  "status": "pass",
+  "summary": "all tests passed; p95 latency improved"
+}
 ```
-Hi have a look at program-train.md and let's kick off a new experiment! let's do the setup first.
+
+注意：评估器需要把这个 JSON 写到环境变量 `AUTORESEARCH_OUTPUT_JSON` 指向的路径。
+
+## 目录结构
+
+```text
+problem.md
+program.md
+task.json
+run_task.py
+tasks/
+  api_bugfix_assistant/
+    evaluate.py
+    workspace/
+      api_client.py
+artifacts/
 ```
 
-训练模式下，`program-train.md` 文件本质上是一个超轻量级的 "skill"。通用模式则使用新的 `program.md`。
+## 与原始训练模式的关系
 
-## 当前项目结构
+这个 fork 保留了原始训练模式，但不作为默认入口：
 
-```
-prepare.py      — 常量、数据准备 + 运行时工具（不要修改）
-train.py        — 模型、优化器、训练循环（agent 修改这个）
-program.md      — 通用自动研究 agent 指令
-program-train.md — 原始训练模式 agent 指令
-problem.md      — 当前通用任务定义
-task.json       — 当前通用任务配置
-run_task.py     — 通用评估入口
-tasks/          — 通用任务目录（含示例 benchmark）
-pyproject.toml  — 依赖
-```
+- `program-train.md`
+- `train.py`
+- `prepare.py`
 
-## 设计选择
+如果你要做单卡训练优化，使用训练模式；如果你要做 API 工程问题优化，使用默认通用模式。
 
-- **单个文件修改。** agent 只触碰 `train.py`。这使范围可控且 diff 可审查。
-- **固定时间预算。** 训练总是精确运行 5 分钟，无论你的特定平台如何。你可以预期大约 12 个实验/小时，大约 100 个实验在你睡觉时。这个设计决策有两个好处。首先，这使得实验可以直接比较，无论 agent 改变了什么（模型大小、批次大小、架构等）。其次，这意味着 autoresearch 将在该时间预算内为你的平台找到最优模型。缺点是你的运行（和结果）变得与其他人在其他计算平台上运行的结果不可比较。
-- **自包含。** 除了 PyTorch 和几个小包外没有外部依赖。没有分布式训练，没有复杂的配置。一个 GPU、一个文件、一个指标。
+## 常见问题
 
-## 平台支持
+### 没有 GPU 能用吗？
 
-此代码目前要求你有单个 NVIDIA GPU。原则上支持 CPU、MPS 和其他平台是完全可能的，但这也会使代码膨胀。我不 100% 确定我现在想亲自承担这个。人们可以参考（或让他们的 agents 参考）具有更广泛平台支持的完整/父 nanochat 仓库，并显示各种解决方案（例如 Flash Attention 3 kernels 回退实现、通用设备支持、自动检测等），随时创建其他平台的 fork 或讨论，我很乐意在这里的 README 的某个新的著名 forks 部分链接到它们。
+可以。默认任务和通用框架不依赖本地 GPU。
 
-鉴于似乎有很多兴趣在比 H100 小得多的计算平台上使用 autoresearch，再多说几句。如果你要在更小的计算机（Macbooks 等）上尝试运行 autoresearch，我推荐下面的 forks 之一。除此之外，这里有一些关于如何为有抱负的 forks 调整更小模型的默认值的建议：
+### 必须联网吗？
 
-1. 为了得到还不错的结果，我会使用熵低得多的数据集，例如这个 [TinyStories 数据集](https://huggingface.co/datasets/karpathy/tinystories-gpt4-clean)。这些是 GPT-4 生成的短篇故事。因为数据范围窄得多，你会用小得多的模型看到合理的结果（如果你在训练后尝试从它们采样）。
-2. 你可以尝试降低 `vocab_size`，例如从 8192 降到 4096、2048、1024，甚至 - 在 utf-8 编码后只有 256 个可能字节的字节级 tokenizer。
-3. 在 `prepare.py` 中，你会想要大幅降低 `MAX_SEQ_LEN`，根据计算机甚至降到 256 等。随着你降低 `MAX_SEQ_LEN`，你可能想要在 `train.py` 中稍微增加 `DEVICE_BATCH_SIZE` 来补偿。每次前向/反向传播的 token 数量是这两个的乘积。
-4. 同样在 `prepare.py` 中，你会想要降低 `EVAL_TOKENS`，以便你的验证损失在更少的数据上评估。
-5. 在 `train.py` 中，控制模型复杂度的主要单一旋钮是 `DEPTH`（默认为 8）。很多变量只是它的函数，所以例如将其降低到例如 4。
-6. 你很可能想使用只是 "L" 的 `WINDOW_PATTERN`，因为 "SSSL" 使用交替带状注意力模式，对你来说可能非常低效。试试看。
-7. 你会想要大幅降低 `TOTAL_BATCH_SIZE`，但保持 2 的幂，例如甚至降到 `2**14`（~16K）左右，很难说。
+不一定。默认 evaluator 是本地确定性评估，不访问网络。
 
-我认为这些会是值得尝试的合理超参数。向你最喜欢的编码 agent 寻求帮助，并复制粘贴这个指南以及完整的源代码。
+### API Key 放哪？
 
-## 著名 forks
-
-- [miolini/autoresearch-macos](https://github.com/miolini/autoresearch-macos) (MacOS)
-- [trevin-creator/autoresearch-mlx](https://github.com/trevin-creator/autoresearch-mlx) (MacOS)
-- [jsegov/autoresearch-win-rtx](https://github.com/jsegov/autoresearch-win-rtx) (Windows)
-- [andyluo7/autoresearch](https://github.com/andyluo7/autoresearch) (AMD)
+如果你的真实任务需要调用外部 API，建议通过环境变量注入，不要写进代码库。
 
 ## 许可证
 
 MIT
-
-## 署名
-
-本主入口为中文默认页，内容基于 karpathy/autoresearch 的 MIT 许可内容整理，并参考 PR #379（`srxly888-creator` / `JasonYeYuhe`）的翻译思路与文本。
