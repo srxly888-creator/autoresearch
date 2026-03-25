@@ -31,42 +31,16 @@
 ## 快速开始前提（本地接通 GLM-5 API）
 
 先把本机 API 调用打通，再进自动研究流程。
+默认推荐：`GLM-5 Anthropic 兼容`。
 
 ### 1) 准备环境
 
 ```bash
 python3 --version
-python3 -m pip install -U openai
+python3 -m pip install -U anthropic
 ```
 
-### 2) 配置密钥
-
-```bash
-export ZAI_API_KEY="你的智谱 API Key"
-```
-
-### 3) 最小联通验证（GLM-5）
-
-```python
-from openai import OpenAI
-import os
-
-client = OpenAI(
-    api_key=os.getenv("ZAI_API_KEY"),
-    base_url="https://open.bigmodel.cn/api/paas/v4/"
-)
-
-resp = client.chat.completions.create(
-    model="glm-5",
-    messages=[{"role": "user", "content": "只回复 OK"}],
-    temperature=0
-)
-print(resp.choices[0].message.content)
-```
-
-### 4) GLM-5 Anthropic 兼容快速配置（可选）
-
-如果你使用 Anthropic 兼容通道，建议这样配置：
+### 2) 配置密钥（推荐：Anthropic 兼容）
 
 ```bash
 export ANTHROPIC_BASE_URL="https://open.bigmodel.cn/api/anthropic"
@@ -75,7 +49,7 @@ export ANTHROPIC_API_KEY="$ANTHROPIC_AUTH_TOKEN"
 export ANTHROPIC_MODEL="glm-5"
 ```
 
-最小验证（Anthropic SDK）：
+### 3) 最小联通验证（GLM-5 Anthropic 兼容）
 
 ```python
 from anthropic import Anthropic
@@ -94,10 +68,38 @@ resp = client.messages.create(
 print(resp.content[0].text)
 ```
 
+### 4) 备选：OpenAI 兼容配置
+
+如果你习惯 OpenAI SDK，可使用：
+
+```bash
+python3 -m pip install -U openai
+export ZAI_API_KEY="你的智谱 API Key"
+```
+
+最小验证（OpenAI SDK）：
+
+```python
+from openai import OpenAI
+import os
+
+client = OpenAI(
+    api_key=os.getenv("ZAI_API_KEY"),
+    base_url="https://open.bigmodel.cn/api/paas/v4/"
+)
+
+resp = client.chat.completions.create(
+    model="glm-5",
+    messages=[{"role": "user", "content": "只回复 OK"}],
+    temperature=0
+)
+print(resp.choices[0].message.content)
+```
+
 说明：
 
-- `ZAI_API_KEY` 示例是 OpenAI 兼容写法。
-- `ANTHROPIC_AUTH_TOKEN` 示例是 Anthropic 兼容写法。
+- 默认推荐 Anthropic 兼容（你当前仓库和本地实测就是这条路径）。
+- `ZAI_API_KEY` 是 OpenAI 兼容写法，作为备选。
 - 两种方式选一种即可，不需要同时使用。
 
 如果你在某些编程工具中使用 GLM Coding Plan，可改用 coding 端点：
